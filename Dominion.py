@@ -10,51 +10,85 @@ class Player(object):
 
     def __init__(self, name):
         self.name = name
+
         self.deck = []
         self.discard = []
         self.hand = []
+        self.viewable = []
+        self.inplay = []
+
         self.actions = 1
         self.money = 0
         self.buys = 1
 
     def buyCard(self, carditem):
-        if self.money < carditem.value:
+        if self.buys < 1:
+            print("Not enough buys left.")
+        elif self.money < carditem.value:
             print("Not enough money to purchase the card.")
         else:
-            self.addCard(carditem)
+            self.gainCard(carditem)
             self.money -= carditem.value
+            self.buys -= 1
 
-    def addCard(self , carditem):
+    # adds a card to discard pile
+    def gainCard(self, carditem):
         self.discard.append(carditem)
 
-    def drawCard(self):
-        drawn = self.deck.pop(0)
-        return drawn
+    # peeks at n number of cards on top of the pile
+    def setView(self, times):
+        for i in range(times):
+            self.viewable.insert(0, self.deck.pop(0))
 
-    def discard(self, carditem):
-        self.hand.remove(carditem)
+    def resetView(self):
+        for i in range(len(self.viewable)):
+            self.deck.insert(0, self.viewable.pop(0))
+
+    def drawCard(self, times):
+        for i in range(times):
+            self.hand.append(self.deck.pop(0))
+
+    def addToHand(self, cards, carditem):
+        self.hand.append(carditem)
+        cards.remove(carditem)
+
+    def returnDeck(self, cards, carditem):
+        self.deck.insert(0, carditem)
+        cards.remove(carditem)
+
+    def discard(self, cards, carditem):
         self.discard.append(carditem)
+        cards.remove(carditem)
 
-    def trashCard(self, carditem):
-        Player.trash.append(carditem)
-        del carditem
+    def trashCard(self, cards, carditem):
+        self.trash.append(carditem)
+        cards.remove(carditem)
 
-    def playCard(self, carditem):
+    def playCard(self, cards, carditem):
         if carditem.type.contains("Currency"):
             carditem.effect()
+            self.inplay.append(carditem)
+            cards.remove(carditem)
         elif self.actions == 0:
             print("Fuck you, you don't have enough actions!")
         else:
             carditem.effect()
+            self.inplay.append(carditem)
+            cards.remove(carditem)
             self.actions -= 1
 
     def playReact(self, carditem):
         if carditem.type.contains("Reaction"):
-            carditem.effect()
+            carditem.react()
         else:
             print("Fuck you, that is not a Reaction card!")
 
 class Card(object):
+
+    cards = ["Cellar", "Chapel", "Moat", "Chancellor", "Village", "Woodcutter", "Workshop", "Bureaucrat", "Feast"\
+    "Gardens", "Moneylender", "Remodel", "Smithy", "Spy", "Thief", "Throne Room", "Council Room", "Festival", "Laboratory"\
+    "Library", "Market", "Mine", "Witch", "Adventurer"]
+
     def __init__(self, name, player, otherplayers):
 
         self.name = name
@@ -64,23 +98,9 @@ class Card(object):
         self.player = player
         self.otherplayers = otherplayers
 
-        cards = ["Cellar", "Chapel", "Moat", "Chancellor", "Village", "Woodcutter", "Workshop", "Bureaucrat", "Feast"\
-        "Gardens", "Moneylender", "Remodel", "Smithy", "Spy", "Thief", "Throne Room", "Council Room", "Festival", "Laboratory"\
-        "Library", "Market", "Mine", "Witch", "Adventurer"]
     def effect(self):
+        print("This card has no effect.")
 
-        '''
-        if type=="Cellar":
-            self.text = "+1 Action \n Discard any number of cards. \n +1 Card per card discarded."
-            self.type = "Action"
-        elif type =="Chapel":
-            self.text = "Trash up to 4 cards from your hand."
-            self.type = "Action"
-        elif type =="Moat":
-            self.text = "+2 Cards \n When another player plays an Attack card, you may reveal this from your hand. If you do, you are unaffected by that Attack."
-            self.type "Action Reaction"
-        elif type =="Chancellor"
-        '''
 class Cellar(Card):
     def __init__(self, player, otherplayers):
         self.name =  "Cellar"
@@ -131,6 +151,29 @@ class Chapel(Card):
                 count+=1
             except:
                 print("This card is not in your hand!")
+
+class Moat(Card):
+    def __init__(self, player, otherplayers):
+        self.name =  "Moat"
+        self.text = "+2 Cards\nWhen another player plays an Attack card, you may reveal this from your hand. If you do, you are unaffected by that Attack."
+        self.value = 2
+        self.player = player
+        self.otherplayers = otherplayers
+        self.type = "Action Reaction"
+
+    def effect(self):
+        self.player.drawCArd
+
+class Moat(Card):
+    def __init__(self, player, otherplayers):
+        self.name =  ""
+        self.text = ""
+        self.value = 2
+        self.player = player
+        self.otherplayers = otherplayers
+        self.type = "Action"
+
+    def effect(self):
 
 def main():
     pygame.init()
