@@ -11,8 +11,9 @@ def main():
         data = s.recv(1024)
         data = data.decode('utf-8')
         print ('Recieved from server: '+ str(data))
-        message = input("-> ")
-        s.send(message.encode('utf-8'))
+        if data.startswith("Asking :"):
+            message = input("-> ")
+            s.send(message.encode('utf-8'))
     s.close()
 
 main()
