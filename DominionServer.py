@@ -62,7 +62,7 @@ class Server():
 
     def close_sockets(self):
         for client in self.clients:
-            client.close()
+            client[0].close()
 
 server= Server('127.0.0.1', 5000)
 
@@ -241,6 +241,7 @@ class Game(object):
         self.supply[card] -= 1
         if self.is_gameover():
             self.print_gameover()
+            server.close_sockets()
             sys.exit()
 
     def __str__(self):
@@ -256,7 +257,7 @@ class Game(object):
 
         self.display_supply(player)
 
-        server.send_message("Entering action phase ;)", player.index)
+        server.send_message("\nEntering action phase ;)", player.index)
         while player.actions > 0 and self.has_action_cards(player):
             server.send_message("You have {} actions remaining...".format(player.actions), player.index)
             self.display_cards(player)
@@ -271,13 +272,12 @@ class Game(object):
             server.send_message("You have {} currency to spend :)".format(player.money), player.index)
             buy = self.buy_input(player)
             player.buy_card(self, buy)
-            if self.is_gameover(): return
 
-        server.send_message("Entering cleanup phase :|", player.index)
+        server.send_message("\nEntering cleanup phase :|\n", player.index)
         player.reset()
         server.send_message(player, player.index)
 
-        input("Hit ENTER to move on to next turn: ")
+        sever.ask_message("Hit ENTER to move on to next turn: ", player.index)
 
     def play_game(self):
         server.send_all("\n\nSTARTING GAME")
@@ -326,7 +326,7 @@ class Game(object):
 
     def display_supply(self, player):
         server.send_message("", player.index)
-        server.send_message("SUPPLY".center(38), player.index)
+        server.send_message("\nSUPPLY".center(38), player.index)
         count = 1
         for card, num in self.supply.items():
             output = "#{} ".format(count).ljust(4) + card.ljust(15) + " ${} ".format(Card.card_dict[card][1]).ljust(12) + str(num).ljust(2) + " left"
@@ -393,7 +393,7 @@ class Player(object):
 
     def buy_card(self, game, card):
         if self.money < Card.card_dict[card][1]:
-            server.send_message("\nNot enough money to purchase the card.\n", self.index)
+            server.send_message("\nNot enough currency to purchase the card.\n", self.index)
         else:
             self.gain_card(game.create_card(card))
             game.minus_supply(card)

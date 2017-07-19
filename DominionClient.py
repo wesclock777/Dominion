@@ -1,4 +1,5 @@
 import socket
+import sys
 
 def main():
     host = '127.0.0.1'
@@ -6,8 +7,9 @@ def main():
 
     s = socket.socket()
     s.connect((host,port))
-    message=""
-    while message != 'q':
+    message = ""
+    data = ""
+    while "won the game with" not in data:
         data = s.recv(1024)
         data = data.decode('utf-8')
         if data.startswith("Asking :"):
