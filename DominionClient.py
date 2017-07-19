@@ -19,6 +19,8 @@ def main():
             data = data.strip("Asking :")
             print (str(data))
             message = input("-> ")
+            if message == "":
+                message = " "
             s.send(message.encode('utf-8'))
         else:
             print (str(data))
