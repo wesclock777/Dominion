@@ -13,17 +13,18 @@ class Server():
         self.port = port
         self.s = socket.socket()
         self.s.bind((host,port))
+        self.clients = []
 
     def send_message(self,message,client):
-        client = client[0]
+        client = self.clients[client][0]
         client.send(message.encode('utf-8'))
         print ("Sent:", str(message))
 
     def recieve_message(self, client):
-        client = client[0]
+        client = self.clients[client][0]
         message = client.recv(1024)
         message = message.decode('utf-8')
-        if message == "q"
+        if message == "q":
             print("User has disconnected!")
             return message
 
@@ -32,8 +33,8 @@ class Server():
 
     def ask_message(self, message, client):
         message = "Asking : "+ message
-        send_message(message,client)
-        return recieve_message(client)
+        self.send_message(message,client)
+        return self.recieve_message(client)
 
     def send_all(self, message):
         for i in range(len(self.clients)):
@@ -191,9 +192,9 @@ class Game(object):
 
         i = 1
         while(len(server.clients) < int(num)):
-            print("Waiting for clients.......Currently connected:", str(len(self.clients)))
+            print("Waiting for clients.......Currently connected:", str(len(server.clients)))
             server.s.listen(1)
-            c, addr = sever.s.accept()
+            c, addr = server.s.accept()
             print("Connection from :" + str(addr))
             server.clients.append((c,addr))
             name = server.ask_message("Enter name of player {}: ".format(i + 1), i)
