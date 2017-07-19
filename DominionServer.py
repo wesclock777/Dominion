@@ -13,30 +13,14 @@ class Server():
         self.port = port
         self.s = socket.socket()
         self.s.bind((host,port))
-        self.s.listen(1)
-        self.clients = []
-
-        self.s.listen(1)
-        c, addr = self.s.accept()
-        self.clients.append((c,addr))
-        self.send_message("How many players are there?", clients[0])
-        num = self.recieve_message(clients[0])
-        num = int(num)
-        while(len(self.clients)<num):
-            print("Waiting for clients.......Currently connected:",
-            str(len(self.clients)))
-            self.s.listen(1)
-            c, addr = self.s.accept()
-            print("Connection from :" + str(addr))
-            self.clients.append((c,addr))
 
     def send_message(self,message,client):
-        client = (self.clients[client])[0]
+        client = client[0]
         client.send(message.encode('utf-8'))
         print ("Sent:", str(message))
 
     def recieve_message(self, client):
-        client = (self.clients[client])[0]
+        client = client[0]
         message = client.recv(1024)
         message = message.decode('utf-8')
         if message == "q"
@@ -195,7 +179,27 @@ class Village(Card):
 class Game(object):
 
     def __init__(self):
-        num_players = len(server.clients)
+        self.players = []
+        print("Waiting for first player to connect...")
+        server.s.listen(1)
+        c, addr = server.s.accept()
+        server.clients.append((c, addr))
+        name = server.ask_message("Enter name of player {}: ".format(1), 0)
+        self.players.append(Player(name,0))
+        num = server.ask_message("How many players are there?", 0)
+
+        i = 1
+        while(len(server.clients)<int(num)):
+            print("Waiting for clients.......Currently connected:",
+            str(len(self.clients)))
+            self.server.s.listen(1)
+            c, addr = self.s.accept()
+            print("Connection from :" + str(addr))
+            server.clients.append((c,addr))
+            name = server.ask_message("Enter name of player {}: ".format(i + 1), i)
+            self.players.append(Player(name, i))
+            i+=1
+
         self.supply = {
             "Copper": 60,
             "Silver": 40,
@@ -213,11 +217,6 @@ class Game(object):
         self.trash = Player.trash
         self.players = []
         self.current_index = random.randint(0, num_players - 1)
-
-        for i in range(num_players):
-            server.send_message("Enter name of player {}: ".format(i + 1), i)
-            name = server.recieve_message(i)
-            self.players.append(Player(name, i))
 
         for player in self.players:
             server.send_message(str(player),player.index)
@@ -280,19 +279,19 @@ class Game(object):
         input("Hit ENTER to move on to next turn: ")
 
     def play_game(self):
-        print("\n\nSTARTING GAME")
+        server.send_all("\n\nSTARTING GAME")
         while True:
             self.turn()
             self.current_index = (self.current_index + 1) % len(self.players)
 
     def print_gameover(self):
-        print("\nGAME OVER\n")
+        server.send_all("\nGAME OVER\n")
         winner = self.players[0]
         for player in self.players:
-            print("{}: {} Victory Points".format(player.name, player.victory_pts))
+            server.send_all("{}: {} Victory Points".format(player.name, player.victory_pts))
             if player.victory_pts > winner.victory_pts:
                 winner = player
-        print("\n{} won the game with {} victory points!".format(winner.name, winner.victory_pts))
+        server.send_all("\n{} won the game with {} victory points!".format(winner.name, winner.victory_pts))
 
     def is_gameover(self):
         return self.supply["Province"] == 0 or sum(x is 0 for x in self.supply.values()) >= 3
@@ -301,22 +300,22 @@ class Game(object):
         return any([card.type.startswith("Action") for card in player.hand])
 
     def play_input(self, player):
-        index = int(input("Enter the index (1-{}) of the card you want to play: ".format(len(player.hand))))
+        index = int(server.ask_message("Enter the index (1-{}) of the card you want to play: ".format(len(player.hand)), player.index))
 
         while index < 1 or index > len(player.hand):
             server.send_message("\nThat index is not in your hand.", player.index)
-            index = int(input("Enter the index (1-{}) of the card you want to play: ".format(len(player.hand))))
+            index = int(server.ask_message("Enter the index (1-{}) of the card you want to play: ".format(len(player.hand)), player.index))
         return index
 
     def buy_input(self, player):
-        index = int(input("Enter the index (1-{}) of the card you want to buy: ".format(len(self.supply))))
+        index = int(server.ask_message("Enter the index (1-{}) of the card you want to buy: ".format(len(self.supply)), player.index))
 
         while index < 1 or index > len(self.supply) or self.supply[list(self.supply.keys())[index - 1]] == 0:
             if index < 1 or index > len(self.supply):
                 server.send_message("\nThat index is not in the supply.",player.index)
             else:
                 server.send_message("\nYou cannot buy that card. There are no cards remaining.", player.index)
-            index = int(input("Enter the index (1-{}) of the card you want to buy: ".format(len(self.supply))))
+            index = int(server.ask_message("Enter the index (1-{}) of the card you want to buy: ".format(len(self.supply)), player.index))
 
         return list(self.supply.keys())[index - 1]
 
