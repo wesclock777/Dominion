@@ -30,7 +30,6 @@ class Server():
             print("Connection from :" + str(addr))
             self.clients.append((c,addr))
 
-
     def send_message(self,message,client):
         client = (self.clients[client])[0]
         client.send(message.encode('utf-8'))
@@ -51,6 +50,29 @@ class Server():
         message = "Asking : "+ message
         send_message(message,client)
         return recieve_message(client)
+
+    def send_all(self, message):
+        for i in range(len(self.clients)):
+            self.send_message(message, i)
+
+    def send_multi(self, message, clients):
+        for index in clients:
+            if index < len(self.clients) and index > 0:
+                self.send_message(message, i)
+
+    # returns list of messages by index of all clients
+    def recieve_all(self):
+        message_dict = {}
+        for i in range(len(self.clients)):
+            messages[i] = self.recieve_message(i)
+        return messages
+
+    def recieve_multi(self, clients):
+        message_dict = {}
+        for index in clients:
+            if index < len(self.clients) and index > 0:
+                message_dict[index] = self.recieve_message(index)
+        return message_dict
 
     def close_sockets(self):
         for client in self.clients:
@@ -193,7 +215,7 @@ class Game(object):
         self.current_index = random.randint(0, num_players - 1)
 
         for i in range(num_players):
-            server.send_message("Enter name of player: ", i)
+            server.send_message("Enter name of player {}: ".format(i + 1), i)
             name = server.recieve_message(i)
             self.players.append(Player(name, i))
 
@@ -214,6 +236,12 @@ class Game(object):
             random.shuffle(initial_hand)
             player.deal_cards(initial_hand)
             player.draw_card(5)
+
+    def minus_supply(self, card):
+        self.supply[card] -= 1
+        if self.is_gameover():
+            self.print_gameover()
+            sys.exit()
 
     def __str__(self):
         return "Players: {}\nSupply: {}\nTrash: {}".format(self.players, self.supply, Player.trash)
@@ -253,10 +281,9 @@ class Game(object):
 
     def play_game(self):
         print("\n\nSTARTING GAME")
-        while not self.is_gameover():
+        while True:
             self.turn()
             self.current_index = (self.current_index + 1) % len(self.players)
-        self.print_gameover()
 
     def print_gameover(self):
         print("\nGAME OVER\n")
@@ -368,7 +395,7 @@ class Player(object):
             server.send_message("\nNot enough money to purchase the card.\n", self.index)
         else:
             self.gain_card(game.create_card(card))
-            game.supply[card] -= 1
+            game.minus_supply(card)
             self.money -= Card.card_dict[card][1]
             self.buys -= 1
 
