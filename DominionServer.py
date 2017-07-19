@@ -5,6 +5,7 @@ import sys
 import pygame
 import socket
 import random
+import time
 
 
 class Server():
@@ -20,10 +21,11 @@ class Server():
         client = self.clients[client][0]
         client.send(message.encode('utf-8'))
         print ("Sent:", message)
+        time.sleep(.005)
 
     def receive_message(self, client):
         client = self.clients[client][0]
-        message = client.recv(4096)
+        message = client.recv(8192)
         message = message.decode('utf-8')
         if message == "q":
             print("User has disconnected!")
