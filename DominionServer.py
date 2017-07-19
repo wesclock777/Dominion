@@ -21,7 +21,7 @@ class Server():
         client = self.clients[client][0]
         client.send(message.encode('utf-8'))
         print ("Sent:", message)
-        time.sleep(.005)
+        time.sleep(.07)
 
     def receive_message(self, client):
         client = self.clients[client][0]
@@ -235,9 +235,9 @@ class Game(object):
             "Curse": (num_players - 1) * 10,
             "Cellar": 10,
             "Chapel": 10,
-            "Moat": 1,
-            "Smithy" : 0,
-            "Village": 0} # initialize which cards are in the Game
+            "Moat": 10,
+            "Smithy" : 10,
+            "Village": 10} # initialize which cards are in the Game
 
         self.trash = Player.trash
         self.current_index = random.randint(0, num_players - 1)
@@ -343,7 +343,7 @@ class Game(object):
 
     def buy_input(self, player):
         test_receive = True
-        while test_receive == True:
+        while test_receive:
             instring = server.ask_message("Enter the index (1-{}) of the card you want to buy: ".format(len(self.supply)), player.index)
             test_receive = self.check_receive(instring, player)
         index = int(instring)
@@ -354,7 +354,8 @@ class Game(object):
             else:
                 server.send_message("\nYou cannot buy that card. There are no cards remaining.", player.index)
 
-            while test_receive == True:
+            test_receive = True
+            while test_receive:
                 instring = server.ask_message("Enter the index (1-{}) of the card you want to buy: ".format(len(self.supply)), player.index)
                 test_receive = self.check_receive(instring, player)
             index = int(instring)
