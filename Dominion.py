@@ -319,6 +319,7 @@ class Player(object):
     def gain_card(self, carditem):
         self.check_victory(carditem)
         self.discard.append(carditem)
+        # needs to be changed to account for other players and differences in message
         print("You have gained 1 {}! It has been added to your discard pile.".format(carditem.name))
 
     # peeks at n number of cards on top of the pile

@@ -16,7 +16,7 @@ class Server():
         self.s.listen(1)
         self.clients = []
         while(len(self.clients)<2):
-            print("Waiting for clients.......Currently connected:",\
+            print("Waiting for clients.......Currently connected:",
             str(len(self.clients)))
             self.s.listen(1)
             c, addr = self.s.accept()
@@ -157,7 +157,8 @@ class Village(Card):
 
 class Game(object):
 
-    def __init__(self, num_players):
+    def __init__(self):
+        num_players = len(server.clients)
         self.supply = {
             "Copper": 60,
             "Silver": 40,
@@ -174,13 +175,15 @@ class Game(object):
 
         self.trash = Player.trash
         self.players = []
-        self.current_index = 0
+        self.current_index = random.randint(0, num_players - 1)
 
         for i in range(num_players):
-            name = input("Enter name of player: ")
+            server.send_message("Enter name of player: ", i)
+            name = server.recieve_message(i)
             self.players.append(Player(name))
 
-        random.shuffle(self.players)
+        for player in self.players:
+            print(player)
 
         # deal cards to players
         starting_cards = {"Copper": 7, "Estate" : 3}
@@ -427,13 +430,7 @@ class Player(object):
 
 def main():
 
-    while True:
-        server.send_message("Testing this shit.", 0)
-        server.send_message("Testing two shits.", 1)
-        print (server.recieve_message(0))
-        print (server.recieve_message(1))
-
-    game = Game(2)
+    game = Game()
     game.play_game()
 
 
