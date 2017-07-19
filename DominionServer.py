@@ -16,9 +16,10 @@ class Server():
         self.clients = []
 
     def send_message(self,message,client):
+        message = str(message)
         client = self.clients[client][0]
         client.send(message.encode('utf-8'))
-        print ("Sent:", str(message))
+        print ("Sent:", message)
 
     def recieve_message(self, client):
         client = self.clients[client][0]
@@ -137,10 +138,10 @@ class Chapel(Card):
             if count > 4 or not player.hand:
                 break
 
-            server.sendmessage("You can trash "+(4 - count)+" more cards.", player.index)
-            server.sendmessage("Your current hand is: "+ str(player.hand) + str(player.index))
+            server.send_message("You can trash "+(4 - count)+" more cards.", player.index)
+            server.send_message("Your current hand is: "+ str(player.hand) + str(player.index))
             instring = server.ask_message("Enter the cards you would like to trash. \nIf none just press enter\n-> ", player.index).strip("\n")
-            server.sendmessage("",player.index)
+            server.send_message("",player.index)
             indexes = instring.split()
 
             if indexes:
@@ -150,9 +151,9 @@ class Chapel(Card):
                         num = int(index)
                         trash_list.append(player.hand[num - 1])
                     except:
-                        server.sendmessage("This card is not in your hand!", player.index)
+                        server.send_message("This card is not in your hand!", player.index)
                 if len(trash_list) > 4:
-                    server.sendmessage("You tried to trash more than 4 cards, the first 4 trashable cards will be trashed.",player.index)
+                    server.send_message("You tried to trash more than 4 cards, the first 4 trashable cards will be trashed.",player.index)
                     trash_list = trash_list[0, 4]
                 for card in trash_list:
                     player.trash_card(player.hand, card)
@@ -160,9 +161,9 @@ class Chapel(Card):
             else:
                 break
 
-            server.sendmessage("", player.index)
+            server.send_message("", player.index)
 
-        server.sendmessage("The trash is now:", Player.trash)
+        server.send_message("The trash is now:", Player.trash)
 
 class Moat(Card):
     def effect(self, game, player):
@@ -188,10 +189,10 @@ class Game(object):
         server.clients.append((c, addr))
         name = server.ask_message("Enter name of player 1: ", 0)
         self.players.append(Player(name, 0))
-        num = server.ask_message("How many players are there?", 0)
+        num_players = int(server.ask_message("How many players are there?", 0))
 
         i = 1
-        while(len(server.clients) < int(num)):
+        while(len(server.clients) < num_players):
             print("Waiting for clients.......Currently connected:", str(len(server.clients)))
             server.s.listen(1)
             c, addr = server.s.accept()
@@ -216,7 +217,6 @@ class Game(object):
             "Village": 0} # initialize which cards are in the Game
 
         self.trash = Player.trash
-        self.players = []
         self.current_index = random.randint(0, num_players - 1)
 
         for player in self.players:
@@ -251,31 +251,31 @@ class Game(object):
 
     def turn(self):
         player = self.players[self.current_index]
-        server.sendmessage("\n{} is going!".format(player.name), player.index)
-        server.sendmessage(player, player.index)
+        server.send_message("\n{} is going!".format(player.name), player.index)
+        server.send_message(player, player.index)
 
-        self.display_supply()
+        self.display_supply(player)
 
-        server.sendmessage("Entering action phase ;)", player.index)
+        server.send_message("Entering action phase ;)", player.index)
         while player.actions > 0 and self.has_action_cards(player):
-            server.sendmessage("You have {} actions remaining...".format(player.actions), player.index)
+            server.send_message("You have {} actions remaining...".format(player.actions), player.index)
             self.display_cards(player)
             index = self.play_input(player)
             player.play_action_card(self, player.hand[index - 1])
             if self.is_gameover(): return
 
-        server.sendmessage("\nEntering buy phase :)", player.index)
+        server.send_message("\nEntering buy phase :)", player.index)
         player.calculate_money()
         while player.buys > 0:
-            self.display_supply()
-            server.sendmessage("You have", player.money, "currency to spend :)", player.index)
+            self.display_supply(player)
+            server.send_message("You have {} currency to spend :)".format(player.money), player.index)
             buy = self.buy_input(player)
             player.buy_card(self, buy)
             if self.is_gameover(): return
 
-        server.sendmessage("Entering cleanup phase :|", player.index)
+        server.send_message("Entering cleanup phase :|", player.index)
         player.reset()
-        server.sendmessage(player, player.index)
+        server.send_message(player, player.index)
 
         input("Hit ENTER to move on to next turn: ")
 
@@ -322,16 +322,17 @@ class Game(object):
 
     def display_cards(self, player):
         # TODO: tfw catherine is lazy
-        server.sendmessage("Cards in your hand: "+ str(player.hand), player.index)
+        server.send_message("Cards in your hand: "+ str(player.hand), player.index)
 
-    def display_supply(self):
-        server.sendmessage("", player.index)
-        server.sendmessage("SUPPLY".center(38), player.index)
+    def display_supply(self, player):
+        server.send_message("", player.index)
+        server.send_message("SUPPLY".center(38), player.index)
         count = 1
         for card, num in self.supply.items():
-            server.sendmessage("#{}".format(count).ljust(3), card.ljust(15), "${}".format(Card.card_dict[card][1]).ljust(10), str(num).ljust(2)+ " left", player.index)
+            output = "#{} ".format(count).ljust(4) + card.ljust(15) + " ${} ".format(Card.card_dict[card][1]).ljust(12) + str(num).ljust(2) + " left"
+            server.send_message(output, player.index)
             count += 1
-        server.sendmessage("", player.index)
+        server.send_message("", player.index)
 
 
 class Player(object):
