@@ -23,7 +23,6 @@ class Server():
             print("Connection from :" + str(addr))
             self.clients.append((c,addr))
 
-
     def send_message(self,message,client):
         client = (self.clients[client])[0]
         client.send(message.encode('utf-8'))
@@ -36,6 +35,29 @@ class Server():
             return ""
         print ("From connected user: "+ str(message))
         return message
+
+    def send_all(self, message):
+        for i in range(len(self.clients)):
+            self.send_message(message, i)
+
+    def send_multi(self, message, clients):
+        for index in clients:
+            if index < len(self.clients) and index > 0:
+                self.send_message(message, i)
+
+    # returns list of messages by index of all clients
+    def recieve_all(self):
+        message_dict = {}
+        for i in range(len(self.clients)):
+            messages[i] = self.recieve_message(i)
+        return messages
+
+    def recieve_multi(self, clients):
+        message_dict = {}
+        for index in clients:
+            if index < len(self.clients) and index > 0:
+                message_dict[index] = self.recieve_message(index)
+        return message_dict
 
     def close_sockets(self):
         for client in self.clients:
@@ -178,12 +200,9 @@ class Game(object):
         self.current_index = random.randint(0, num_players - 1)
 
         for i in range(num_players):
-            server.send_message("Enter name of player: ", i)
+            server.send_message("Enter name of player {}: ".format(i + 1), i)
             name = server.recieve_message(i)
-            self.players.append(Player(name))
-
-        for player in self.players:
-            print(player)
+            self.players.append(Player(name, i))
 
         # deal cards to players
         starting_cards = {"Copper": 7, "Estate" : 3}
@@ -301,8 +320,9 @@ class Player(object):
 
     trash = {}
 
-    def __init__(self, name):
+    def __init__(self, name, index):
         self.name = name
+        self.index = index
 
         self.deck = []
         self.discard = []
