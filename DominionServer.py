@@ -334,6 +334,17 @@ class Game(object):
             count += 1
         server.send_message("", player.index)
 
+    def check_recieve(self, message, player):
+        message= message.title()
+        if message.startswith("Help"):
+            cardname = message.split(" ")[1]
+            server.send_message(Card.card_dict[cardname][2], player.index)
+            return True
+        if message.startswith("Supply"):
+            server.display_supply(player)
+            return True
+        return False
+
 
 class Player(object):
 
