@@ -21,7 +21,7 @@ class Server():
         client = self.clients[client][0]
         client.send(message.encode('utf-8'))
         print ("Sent:", message)
-        time.sleep(.005)
+        time.sleep(.1)
 
     def receive_message(self, client):
         client = self.clients[client][0]
