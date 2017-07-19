@@ -44,7 +44,17 @@ class Server():
     def send_multi(self, message, clients):
         for index in clients:
             if index < len(self.clients) and index > 0:
-                self.send_message(message, i)
+                self.send_message(message, index)
+
+    def send_other(self, message, client):
+        self.send_multi(message, self.get_other(client))
+
+    def get_other(self, client):
+        indexes = []
+        for i in range(len(self.clients)):
+            if i != client:
+                indexes.append(i)
+        return indexes
 
     # returns list of messages by index of all clients
     def receive_all(self):
@@ -59,6 +69,9 @@ class Server():
             if index < len(self.clients) and index > 0:
                 message_dict[index] = self.receive_message(index)
         return message_dict
+
+    def recieve_other(self, client):
+        return self.recieve_multi(self.get_other(client))
 
     def close_sockets(self):
         for client in self.clients:
@@ -227,23 +240,15 @@ class Game(object):
         self.trash = Player.trash
         self.current_index = random.randint(0, num_players - 1)
 
-        for player in self.players:
-            server.send_message(str(player),player.index)
-
         # deal cards to players
         starting_cards = {"Copper": 7, "Estate" : 3}
-        initial_hand = []
+        self.initial_hand = []
         for card, num in starting_cards.items():
             for i in range(num):
-                initial_hand.append(self.create_card(card))
+                self.initial_hand.append(self.create_card(card))
             # check if card is a Victory Card
             if card not in [x for x in Card.card_dict.keys() if Card.card_dict[x][0] is "Victory"]:
                 self.supply[card] -= num
-
-        for player in self.players:
-            random.shuffle(initial_hand)
-            player.deal_cards(initial_hand)
-            player.draw_card(5)
 
     def minus_supply(self, card):
         self.supply[card] -= 1
@@ -260,8 +265,7 @@ class Game(object):
 
     def turn(self):
         player = self.players[self.current_index]
-        server.send_message("\n{} is going!".format(player.name), player.index)
-        server.send_message(player, player.index)
+        server.send_all("\n{} is going!\n".format(player.name))
 
         self.display_supply(player)
 
@@ -271,7 +275,6 @@ class Game(object):
             self.display_cards(player)
             index = self.play_input(player)
             player.play_action_card(self, player.hand[index - 1])
-            if self.is_gameover(): return
 
         server.send_message("\nEntering buy phase :)", player.index)
         player.calculate_money()
@@ -291,7 +294,13 @@ class Game(object):
             test_receive = self.check_receive(instring, player)
 
     def play_game(self):
-        server.send_all("\n\nSTARTING GAME")
+        server.send_all("\n\nSTARTING GAME\n")
+
+        for player in self.players:
+            random.shuffle(self.initial_hand)
+            player.deal_cards(self.initial_hand)
+            player.draw_card(5)
+
         while True:
             self.turn()
             self.current_index = (self.current_index + 1) % len(self.players)
@@ -303,7 +312,8 @@ class Game(object):
             server.send_all("{}: {} Victory Points".format(player.name, player.victory_pts))
             if player.victory_pts > winner.victory_pts:
                 winner = player
-        server.send_all("\n{} won the game with {} victory points!".format(winner.name, winner.victory_pts))
+        server.send_message("\nCONGRATS!!! You won the game with {} victory points!".format(winner.victory_pts), winner.index)
+        server.send_other("\n{} won the game with {} victory points!".format(winner.name, winner.victory_pts), winner.index)
 
     def is_gameover(self):
         return self.supply["Province"] == 0 or sum(x is 0 for x in self.supply.values()) >= 3
@@ -447,6 +457,7 @@ class Player(object):
         self.check_victory(carditem)
         self.discard.append(carditem)
         server.send_message("You have gained 1 {}! It has been added to your discard pile.".format(carditem.name), self.index)
+        server.send_other("{} has gained 1 {}! It has been added to their discard pile.".format(self.name, carditem.name), self.index)
 
     # peeks at n number of cards on top of the pile
     def set_view(self, times):
@@ -465,6 +476,7 @@ class Player(object):
                 self.discard = []
             self.hand.append(self.deck.pop(0))
             server.send_message("You drew 1 {}!".format(self.hand[-1]), self.index)
+        server.send_other("{} drew {} cards!".format(self.name, times), self.index)
         server.send_message("Your hand is now: {}".format(self.hand), self.index)
 
     def add_to_hand(self, cards, carditem):
@@ -479,6 +491,7 @@ class Player(object):
     def discard_card(self, cards, carditem):
         self.discard.append(carditem)
         server.send_message("You have discarded 1 {}! It has been added to your discard pile.".format(carditem.name), self.index)
+        server.other("{} has discarded 1 card! It has been added to their discard pile.".format(self.name), self.index)
         cards.remove(carditem)
 
     def trash_card(self, cards, carditem):
@@ -487,10 +500,12 @@ class Player(object):
         else:
             Player.trash[carditem.name] = 1
         server.send_message("You have trashed 1 {}! It has been added to the trash pile.".format(carditem.name), self.index)
+        server.send_other("{} have trashed 1 {}! It has been added to the trash pile.".format(self.name, carditem.name), self.index)
         cards.remove(carditem)
 
     def play_action_card(self, game, carditem):
         server.send_message("\nYou played {}!\n".format(carditem.name), self.index)
+        server.send_message("\n{} played {}!\n".format(self.name, carditem.name), self.index)
         self.in_play.append(carditem)
         self.hand.remove(carditem)
         carditem.effect(game, self)
@@ -506,14 +521,6 @@ class Player(object):
         for card in self.hand:
             if card.type is "Treasure":
                 self.money += card.value
-
-
-
-
-
-
-
-
 
 def main():
 
