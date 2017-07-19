@@ -45,7 +45,7 @@ class Server():
 
     def send_multi(self, message, clients):
         for index in clients:
-            if index < len(self.clients) and index > 0:
+            if index < len(self.clients) and index >= 0:
                 self.send_message(message, index)
 
     def send_other(self, message, client):
@@ -68,7 +68,7 @@ class Server():
     def receive_multi(self, clients):
         message_dict = {}
         for index in clients:
-            if index < len(self.clients) and index > 0:
+            if index < len(self.clients) and index >= 0:
                 message_dict[index] = self.receive_message(index)
         return message_dict
 
