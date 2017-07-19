@@ -10,10 +10,13 @@ def main():
     while message != 'q':
         data = s.recv(1024)
         data = data.decode('utf-8')
-        print ('Recieved from server: '+ str(data))
         if data.startswith("Asking :"):
+            data = data.strip("Asking :")
+            print ('Recieved from server: '+ str(data))
             message = input("-> ")
             s.send(message.encode('utf-8'))
+        else:
+            print ('Recieved from server: '+ str(data))
     s.close()
 
 main()
