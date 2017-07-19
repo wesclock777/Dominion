@@ -200,6 +200,12 @@ class Game(object):
             player.deal_cards(initial_hand)
             player.draw_card(5)
 
+    def minus_supply(self, card):
+        self.supply[card] -= 1
+        if self.is_gameover():
+            self.print_gameover()
+            sys.exit()
+
     def __str__(self):
         return "Players: {}\nSupply: {}\nTrash: {}".format(self.players, self.supply, Player.trash)
 
@@ -238,10 +244,9 @@ class Game(object):
 
     def play_game(self):
         print("\n\nSTARTING GAME")
-        while not self.is_gameover():
+        while True:
             self.turn()
             self.current_index = (self.current_index + 1) % len(self.players)
-        self.print_gameover()
 
     def print_gameover(self):
         print("\nGAME OVER\n")
@@ -351,7 +356,7 @@ class Player(object):
             print("\nNot enough money to purchase the card.\n")
         else:
             self.gain_card(game.create_card(card))
-            game.supply[card] -= 1
+            game.minus_supply(card)
             self.money -= Card.card_dict[card][1]
             self.buys -= 1
 
