@@ -12,11 +12,11 @@ def main():
         data = data.decode('utf-8')
         if data.startswith("Asking :"):
             data = data.strip("Asking :")
-            print ('Recieved from server: '+ str(data))
+            print (str(data))
             message = input("-> ")
             s.send(message.encode('utf-8'))
         else:
-            print ('Recieved from server: '+ str(data))
+            print (str(data))
     s.close()
 
 main()
