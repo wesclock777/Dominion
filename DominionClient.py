@@ -2,7 +2,10 @@ import socket
 import sys
 
 def main():
-    host = '127.0.0.1'
+    #host = input("Host: ")
+    #port = input("Port: ")
+    host = '192.168.0.42'
+    #192.168.0.42
     port = 5000
 
     s = socket.socket()
@@ -10,7 +13,7 @@ def main():
     message = ""
     data = ""
     while "won the game with" not in data:
-        data = s.recv(1024)
+        data = s.recv(4096)
         data = data.decode('utf-8')
         if data.startswith("Asking :"):
             data = data.strip("Asking :")

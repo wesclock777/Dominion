@@ -23,7 +23,7 @@ class Server():
 
     def receive_message(self, client):
         client = self.clients[client][0]
-        message = client.recv(1024)
+        message = client.recv(4096)
         message = message.decode('utf-8')
         if message == "q":
             print("User has disconnected!")
@@ -64,7 +64,7 @@ class Server():
         for client in self.clients:
             client[0].close()
 
-server= Server('127.0.0.1', 5000)
+server= Server('192.168.0.42', 5000)
 
 class Card(object):
 
