@@ -10,7 +10,7 @@ def main():
     message = ""
     data = ""
     while "won the game with" not in data:
-        data = s.recv(1024)
+        data = s.recv(4096)
         data = data.decode('utf-8')
         if data.startswith("Asking :"):
             data = data.strip("Asking :")
