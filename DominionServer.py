@@ -180,25 +180,25 @@ class Game(object):
 
     def __init__(self):
         self.players = []
+
         print("Waiting for first player to connect...")
         server.s.listen(1)
         c, addr = server.s.accept()
         server.clients.append((c, addr))
-        name = server.ask_message("Enter name of player {}: ".format(1), 0)
-        self.players.append(Player(name,0))
+        name = server.ask_message("Enter name of player 1: ", 0)
+        self.players.append(Player(name, 0))
         num = server.ask_message("How many players are there?", 0)
 
         i = 1
-        while(len(server.clients)<int(num)):
-            print("Waiting for clients.......Currently connected:",
-            str(len(self.clients)))
-            self.server.s.listen(1)
-            c, addr = self.s.accept()
+        while(len(server.clients) < int(num)):
+            print("Waiting for clients.......Currently connected:", str(len(self.clients)))
+            server.s.listen(1)
+            c, addr = sever.s.accept()
             print("Connection from :" + str(addr))
             server.clients.append((c,addr))
             name = server.ask_message("Enter name of player {}: ".format(i + 1), i)
             self.players.append(Player(name, i))
-            i+=1
+            i += 1
 
         self.supply = {
             "Copper": 60,
