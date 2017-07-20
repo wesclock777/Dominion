@@ -4,8 +4,9 @@ import sys
 def main():
     #host = input("Host: ")
     #port = input("Port: ")
-    host = '192.168.0.42'
-    #192.168.0.42
+    host = "10.147.171.24"
+    #10.147.171.24 UT
+    #192.168.0.42 WES
     port = 5000
 
     s = socket.socket()
@@ -15,9 +16,9 @@ def main():
     while "won the game with" not in data:
         data = s.recv(8192)
         data = data.decode('utf-8')
-        if data.startswith("Asking :"):
-            data = data.strip("Asking :")
-            print (str(data))
+        if data.startswith("Asking: "):
+            data = data.strip("Asking: ")
+            print(str(data))
             message = input("-> ")
             if message == "":
                 message = " "

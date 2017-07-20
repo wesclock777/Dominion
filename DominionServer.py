@@ -35,7 +35,7 @@ class Server():
         return message
 
     def ask_message(self, message, client):
-        message = "Asking : "+ message
+        message = "Asking: "+ message
         self.send_message(message,client)
         return self.receive_message(client)
 
@@ -79,7 +79,7 @@ class Server():
         for client in self.clients:
             client[0].close()
 
-server= Server('192.168.0.42', 5000)
+server= Server('10.147.171.24', 5000)
 
 class Card(object):
 
@@ -130,24 +130,24 @@ class Curse(Card): pass
 
 class Cellar(Card):
     def effect(self, game, player):
-        server.send_message("Your current hand is:", player.index)
-        test_receive = True
-        while test_receive == True:
-            instring = server.ask_message(("Enter the cards you would like to discard \n If none just press enter \n-> "), player.index).strip("\n")
-            test_receive = game.check_receive(instring, player)
+        server.send_message("Your current hand is: {}".format(player.hand), player.index)
+        instring = game.get_input_generic("Enter the cards you would like to discard \nIf none just press ENTER", player).strip("\n")
 
         indexes = instring.split()
         count = 0
         discard_list = []
         for index in indexes:
             try:
-                num = int(index)
-                discard_list.append(player.hand[num - 1])
+                num = int(index) - 1
+                if num >= len(player.hand) or num < 0:
+                    server.send_message("Did not process {}. It is not in your hand!".format(index), player.index)
+                else:
+                    discard_list.append(player.hand[num])
             except:
-                server.send_message("This card is not in your hand!", player.index)
-        for card in discard_list:
-            player.discard_card(player.hand, card)
-        player.draw_card(len(indexes))
+                server.send_message("{} is not an integer!".format(index), player.index)
+        server.send_message(" ".format(index), player.index)
+        player.discard_cards(player.hand, discard_list)
+        player.draw_card(len(discard_list))
 
 class Chapel(Card):
     def effect(self, game, player):
@@ -267,33 +267,42 @@ class Game(object):
 
     def turn(self):
         player = self.players[self.current_index]
-        server.send_all("\n{} is going!\n".format(player.name))
+        server.send_message("\nIt is now your turn!", player.index)
+        server.send_other("\n{} is going!".format(player.name), player.index)
 
-        self.display_supply(player)
+        server.send_message(player, player.index)
 
         server.send_message("\nEntering action phase ;)", player.index)
+        self.display_supply(player)
+
         while player.actions > 0 and self.has_action_cards(player):
-            server.send_message("You have {} actions remaining...".format(player.actions), player.index)
+            server.send_message("\nYou have {} actions remaining...".format(player.actions), player.index)
             self.display_cards(player)
             index = self.play_input(player)
+            if index == None:
+                break
             player.play_action_card(self, player.hand[index - 1])
 
         server.send_message("\nEntering buy phase :)", player.index)
         player.calculate_money()
+        self.display_supply(player)
+        old_buys = player.buys
         while player.buys > 0:
-            self.display_supply(player)
-            server.send_message("You have {} currency to spend :)".format(player.money), player.index)
+            if player.buys != old_buys:
+                self.display_supply(player)
+                old_buys = player.buys
+            server.send_message("\nYou have {} currency to spend :)".format(player.money), player.index)
             buy = self.buy_input(player)
-            player.buy_card(self, buy)
+            if buy != None:
+                player.buy_card(self, buy)
+            else:
+                break
 
         server.send_message("\nEntering cleanup phase :|\n", player.index)
         player.reset()
-        server.send_message(player, player.index)
 
-        test_receive = True
-        while test_receive:
-            instring = server.ask_message("Hit ENTER to move on to next turn: ", player.index)
-            test_receive = self.check_receive(instring, player)
+        self.get_input_generic("\nHit ENTER to move on to next turn.", player)
+        server.send_all("\n" + "-" * 60)
 
     def play_game(self):
         server.send_all("\n\nSTARTING GAME\n")
@@ -325,50 +334,39 @@ class Game(object):
 
     def play_input(self, player):
 
-        test_receive = True
-        while test_receive == True:
-            instring = server.ask_message("Enter the index (1-{}) of the card you want to play: ".format(len(player.hand)), player.index)
-            test_receive = self.check_receive(instring, player)
-        index = int(instring)
+        message = "\nEnter the index (1-{}) of the card you want to play\nHit ENTER to exit action phase:".format(len(player.hand))
 
-        while index < 1 or index > len(player.hand):
+        index = self.get_input(message, player)
+
+        while index != None and (index < 1 or index > len(player.hand)):
             server.send_message("\nThat index is not in your hand.", player.index)
-            test_receive = True
-            while test_receive == True:
-                instring = server.ask_message("Enter the index (1-{}) of the card you want to play: ".format(len(player.hand)), player.index)
-                test_receive = self.check_receive(instring, player)
-            index = int(instring)
+            index = self.get_input(message, player)
 
         return index
 
     def buy_input(self, player):
-        test_receive = True
-        while test_receive:
-            instring = server.ask_message("Enter the index (1-{}) of the card you want to buy: ".format(len(self.supply)), player.index)
-            test_receive = self.check_receive(instring, player)
-        index = int(instring)
+        message = "Enter the index (1-{}) of the card you want to buy\nHit ENTER to exit buy phase:".format(len(self.supply))
 
-        while index < 1 or index > len(self.supply) or self.supply[list(self.supply.keys())[index - 1]] == 0:
-            if index < 1 or index > len(self.supply):
-                server.send_message("\nThat index is not in the supply.",player.index)
-            else:
-                server.send_message("\nYou cannot buy that card. There are no cards remaining.", player.index)
+        index = self.get_input(message, player)
 
-            test_receive = True
-            while test_receive:
-                instring = server.ask_message("Enter the index (1-{}) of the card you want to buy: ".format(len(self.supply)), player.index)
-                test_receive = self.check_receive(instring, player)
-            index = int(instring)
+        try:
+            while index < 1 or index > len(self.supply) or self.supply[list(self.supply.keys())[index - 1]] == 0:
+                if index < 1 or index > len(self.supply):
+                    server.send_message("\nThat index is not in the supply.",player.index)
+                else:
+                    server.send_message("\nYou cannot buy that card. There are no cards remaining.", player.index)
 
-        return list(self.supply.keys())[index - 1]
+                index = self.get_input(message, player)
+            return list(self.supply.keys())[index - 1]
+        except:
+            return index
 
     def display_cards(self, player):
         # TODO: tfw catherine is lazy
         server.send_message("Cards in your hand: "+ str(player.hand), player.index)
 
     def display_supply(self, player):
-        server.send_message("", player.index)
-        server.send_message("\nSUPPLY".center(38), player.index)
+        server.send_message("\n" + "SUPPLY".center(38), player.index)
         count = 1
         for card, num in self.supply.items():
             output = "#{} ".format(count).ljust(4) + card.ljust(15) + " ${} ".format(Card.card_dict[card][1]).ljust(12) + str(num).ljust(2) + " left"
@@ -377,18 +375,61 @@ class Game(object):
         server.send_message("", player.index)
 
     def check_receive(self, message, player):
-        message= message.title()
+        message = message.title()
         if message.startswith("Help"):
-            cardname = message.split(" ")[1]
-            server.send_message(Card.card_dict[cardname][2], player.index)
-            server.send_message("", player.index)
+            try:
+                cardname = message.split(" ")[1]
+                server.send_message(Card.card_dict[cardname][2], player.index)
+                server.send_message(" ", player.index)
+            except:
+                server.send_message("Oops! {} is not a card in the game!\n".format(cardname), player.index)
             return True
         if message.startswith("Supply"):
             self.display_supply(player)
-            server.send_message("", player.index)
+            server.send_message(" ", player.index)
+            return True
+        if message.startswith("Info"):
+            server.send_message(player, player.index)
+            server.send_message(" ", player.index)
             return True
         return False
 
+    # generic input function that checks for HELP AND STASH
+    def get_input_generic(self, message, player):
+        received = True
+        while received:
+            instring = server.ask_message(message, player.index)
+            received = self.check_receive(instring, player)
+        return instring
+
+
+    # forces input to be an integer
+    # checks for HELP and STASH
+    def get_input(self, message, player):
+        correct = True
+        while True:
+            received = True
+            while received:
+                instring = server.ask_message(message, player.index)
+                received = self.check_receive(instring, player)
+            try:
+                return int(instring)
+            except:
+                if instring == " ":
+                    return None
+                else:
+                    server.send_message("\nThat was not an integer.", player.index)
+                    correct = False
+            if correct:
+                return instring
+
+    def check_int(self, message, index, input):
+        while True:
+            try:
+                return int(input)
+            except:
+                server.send_message("\nThat was not an integer.", index)
+                server.ask_message(message, index)
 
 class Player(object):
 
@@ -414,7 +455,7 @@ class Player(object):
         self.viewable, self.in_play, self.hand, self.actions, self.money, self.victory_pts), self.index)
 
     def __str__(self):
-        return "Discard: {}\nHand: {}\nYou currently have: {} actions, {} buys, {} victory points".format(self.discard, self.hand, self.actions, self.money, self.victory_pts)
+        return "\nDiscard: {}\nHand: {}\nYou currently have: {} actions, {} buys, {} victory points".format(self.discard, self.hand, self.actions, self.money, self.victory_pts)
 
     def change_victory_pts(self, points):
         self.victory_pts += points
@@ -448,7 +489,7 @@ class Player(object):
 
     def buy_card(self, game, card):
         if self.money < Card.card_dict[card][1]:
-            server.send_message("\nNot enough currency to purchase the card.\n", self.index)
+            server.send_message("\nNot enough currency to purchase the card.", self.index)
         else:
             self.gain_card(game.create_card(card))
             game.minus_supply(card)
@@ -479,7 +520,7 @@ class Player(object):
                 self.discard = []
             self.hand.append(self.deck.pop(0))
             server.send_message("You drew 1 {}!".format(self.hand[-1]), self.index)
-        server.send_other("{} drew {} cards!".format(self.name, times), self.index)
+        server.send_other("{} drew {} card(s)!".format(self.name, times), self.index)
         server.send_message("Your hand is now: {}".format(self.hand), self.index)
 
     def add_to_hand(self, cards, carditem):
@@ -494,8 +535,15 @@ class Player(object):
     def discard_card(self, cards, carditem):
         self.discard.append(carditem)
         server.send_message("You have discarded 1 {}! It has been added to your discard pile.".format(carditem.name), self.index)
-        server.other("{} has discarded 1 card! It has been added to their discard pile.".format(self.name), self.index)
+        server.send_other("{} has discarded 1 card! It has been added to their discard pile.".format(self.name), self.index)
         cards.remove(carditem)
+
+    def discard_cards(self, cards, carditem_list):
+        for carditem in carditem_list:
+            self.discard.append(carditem)
+            server.send_message("You have discarded 1 {}! It has been added to your discard pile.".format(carditem.name), self.index)
+            cards.remove(carditem)
+        server.send_other("{} has discarded {} card(s)! It has been added to their discard pile.".format(self.name, len(carditem_list)), self.index)
 
     def trash_card(self, cards, carditem):
         if carditem.name in Player.trash:
@@ -508,7 +556,7 @@ class Player(object):
 
     def play_action_card(self, game, carditem):
         server.send_message("\nYou played {}!\n".format(carditem.name), self.index)
-        server.send_message("\n{} played {}!\n".format(self.name, carditem.name), self.index)
+        server.send_other("\n{} played {}!\n".format(self.name, carditem.name), self.index)
         self.in_play.append(carditem)
         self.hand.remove(carditem)
         carditem.effect(game, self)
