@@ -81,126 +81,6 @@ class Server():
 
 server= Server('10.147.171.24', 5000)
 
-class Card(object):
-
-    card_dict = {
-        "Copper": ["Treasure", 0, "+1 Currency", 1],
-        "Silver": ["Treasure", 3, "+2 Currency", 2],
-        "Gold": ["Treasure", 6, "+3 Currency", 3],
-        "Estate": ["Victory", 2, "+1 Victory Points", 1],
-        "Duchy": ["Victory", 5, "+3 Victory Points", 3],
-        "Province": ["Victory", 8, "+6 Victory Points", 6],
-        "Curse": ["Victory", 0, "-1 Victory Points", -1],
-        "Cellar": ["Action", 2, "+1 Action \n Discard any number of cards. \n+1 Card per card discarded."],
-        "Chapel": ["Action", 2, "Trash up to 4 cards from your hand."],
-        "Moat": ["Action Reaction", 2, "+2 Cards\nWhen another player plays an Attack card, you may reveal this from your hand. If you do, you are unaffected by that Attack."],
-        "Smithy": ["Action", 4, "+3 Cards"],
-        "Village": ["Action", 3, "+2 Cards\n+1 Action"]}
-
-    def __init__(self, name):
-        self.name = name
-        self.type = Card.card_dict[name][0]
-        self.price = Card.card_dict[name][1]
-        self.text = Card.card_dict[name][2]
-        if self.type is "Treasure":
-            self.value = Card.card_dict[name][3] # nice
-        if self.type is "Victory":
-            self.points = Card.card_dict[name][3]
-
-    def __str__(self):
-        return self.name
-
-    def __repr__(self):
-        return self.name
-
-    def effect(self, game, player):
-        if self.type == "Treasure":
-            player.money += self.value
-            server.send_message("Your currency is now {}!".format(player.money), player.index)
-        else:
-            server.send_message("This card has no effect. It is not an action card.", player.index)
-
-class Copper(Card): pass
-class Silver(Card): pass
-class Gold(Card): pass
-class Estate(Card): pass
-class Duchy(Card): pass
-class Province(Card): pass
-class Curse(Card): pass
-
-class Cellar(Card):
-    def effect(self, game, player):
-        server.send_message("Your current hand is: {}".format(player.hand), player.index)
-        instring = game.get_input_generic("Enter the cards you would like to discard \nIf none just press ENTER", player).strip("\n")
-
-        indexes = instring.split()
-        count = 0
-        discard_list = []
-        for index in indexes:
-            try:
-                num = int(index) - 1
-                if num >= len(player.hand) or num < 0:
-                    server.send_message("Did not process {}. It is not in your hand!".format(index), player.index)
-                else:
-                    discard_list.append(player.hand[num])
-            except:
-                server.send_message("{} is not an integer!".format(index), player.index)
-        server.send_message(" ".format(index), player.index)
-        player.discard_cards(player.hand, discard_list)
-        player.draw_card(len(discard_list))
-
-class Chapel(Card):
-    def effect(self, game, player):
-        count = 0
-
-        while True:
-            if count > 4 or not player.hand:
-                break
-
-            server.send_message("You can trash "+(4 - count)+" more cards.", player.index)
-            server.send_message("Your current hand is: "+ str(player.hand) + str(player.index))
-            test_receive = True
-            while test_receive == True:
-                instring = server.ask_message("Enter the cards you would like to trash. \nIf none just press enter\n-> ", player.index).strip("\n")
-                test_receive = game.check_receive(instring, player)
-
-            server.send_message("",player.index)
-            indexes = instring.split()
-
-            if indexes:
-                trash_list = []
-                for index in indexes:
-                    try:
-                        num = int(index)
-                        trash_list.append(player.hand[num - 1])
-                    except:
-                        server.send_message("This card is not in your hand!", player.index)
-                if len(trash_list) > 4:
-                    server.send_message("You tried to trash more than 4 cards, the first 4 trashable cards will be trashed.",player.index)
-                    trash_list = trash_list[0, 4]
-                for card in trash_list:
-                    player.trash_card(player.hand, card)
-                    count += 1
-            else:
-                break
-
-            server.send_message("", player.index)
-
-        server.send_message("The trash is now:", Player.trash)
-
-class Moat(Card):
-    def effect(self, game, player):
-        player.draw_card(2)
-
-class Smithy(Card):
-    def effect(self, game, player):
-        player.draw_card(3)
-
-class Village(Card):
-    def effect(self, game, player):
-        player.draw_card(2)
-        player.actions += 1
-
 class Game(object):
 
     def __init__(self):
@@ -462,7 +342,8 @@ class Player(object):
 
     def reset(self):
         for card in self.in_play:
-            self.discard_card(self.in_play, card)
+            self.discard.append(card)
+            self.in_play.remove(card)
         while len(self.hand) > 0:
             self.discard.append(self.hand.pop())
         self.draw_card(5)
@@ -572,6 +453,140 @@ class Player(object):
         for card in self.hand:
             if card.type is "Treasure":
                 self.money += card.value
+
+
+class Card(object):
+
+    card_dict = {
+        "Copper": ["Treasure", 0, "+1 Currency", 1],
+        "Silver": ["Treasure", 3, "+2 Currency", 2],
+        "Gold": ["Treasure", 6, "+3 Currency", 3],
+        "Estate": ["Victory", 2, "+1 Victory Points", 1],
+        "Duchy": ["Victory", 5, "+3 Victory Points", 3],
+        "Province": ["Victory", 8, "+6 Victory Points", 6],
+        "Curse": ["Victory", 0, "-1 Victory Points", -1],
+        "Cellar": ["Action", 2, "+1 Action \n Discard any number of cards. \n+1 Card per card discarded."],
+        "Chapel": ["Action", 2, "Trash up to 4 cards from your hand."],
+        "Moat": ["Action Reaction", 2, "+2 Cards\nWhen another player plays an Attack card, you may reveal this from your hand. If you do, you are unaffected by that Attack."],
+        "Smithy": ["Action", 4, "+3 Cards"],
+        "Village": ["Action", 3, "+2 Cards\n+1 Action"]}
+
+    def __init__(self, name):
+        self.name = name
+        self.type = Card.card_dict[name][0]
+        self.price = Card.card_dict[name][1]
+        self.text = Card.card_dict[name][2]
+        if self.type is "Treasure":
+            self.value = Card.card_dict[name][3] # nice
+        if self.type is "Victory":
+            self.points = Card.card_dict[name][3]
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return self.name
+
+    def effect(self, game, player):
+        if self.type == "Treasure":
+            player.money += self.value
+            server.send_message("Your currency is now {}!".format(player.money), player.index)
+        else:
+            server.send_message("This card has no effect. It is not an action card.", player.index)
+
+class Copper(Card): pass
+class Silver(Card): pass
+class Gold(Card): pass
+class Estate(Card): pass
+class Duchy(Card): pass
+class Province(Card): pass
+class Curse(Card): pass
+
+class Cellar(Card):
+    def effect(self, game, player):
+        server.send_message("Your current hand is: {}".format(player.hand), player.index)
+        instring = game.get_input_generic("Enter the cards you would like to discard \nIf none just press ENTER", player).strip("\n")
+        server.send_message(" ", player.index)
+
+        if instring == " ":
+            return
+        else:
+            indexes = instring.split()
+
+        count = 0
+        discard_list = []
+        for index in indexes:
+            try:
+                num = int(index) - 1
+                if num >= len(player.hand) or num < 0:
+                    server.send_message("Did not process {}. It is not in your hand!".format(index), player.index)
+                else:
+                    discard_list.append(player.hand[num])
+            except:
+                server.send_message("{} is not an integer!".format(index), player.index)
+        server.send_message(" ".format(index), player.index)
+        player.discard_cards(player.hand, discard_list)
+        player.draw_card(len(discard_list))
+
+class Chapel(Card):
+    def effect(self, game, player):
+        count = 0
+
+        while True:
+            if count > 4 or not player.hand:
+                break
+
+            server.send_message("You can trash " + str(4 - count) + " more cards.", player.index)
+            server.send_message("Your current hand is: {}".format(player.hand), player.index)
+
+            instring = game.get_input_generic("Enter the cards you would like to trash \nIf none just press ENTER", player).strip("\n")
+            server.send_message(" ", player.index)
+
+            if instring == " ":
+                return
+            else:
+                indexes = instring.split()
+
+            if indexes:
+                trash_list = []
+                for index in indexes:
+                    try:
+                        num = int(index) - 1
+                        if num >= len(player.hand) or num < 0:
+                            server.send_message("Did not process {}. It is not in your hand!".format(index), player.index)
+                        else:
+                            trash_list.append(player.hand[num])
+                    except:
+                        server.send_message("{} is not an integer!".format(index), player.index)
+
+                if len(trash_list) > 4:
+                    server.send_message("You tried to trash more than 4 cards, the first 4 trashable cards will be trashed.",player.index)
+                    trash_list = trash_list[0, 4]
+                for card in trash_list:
+                    player.trash_card(player.hand, card)
+                    count += 1
+
+            else:
+                break
+
+            server.send_message(" ", player.index)
+
+        server.send_message("The trash is now:", Player.trash)
+
+class Moat(Card):
+    def effect(self, game, player):
+        player.draw_card(2)
+
+class Smithy(Card):
+    def effect(self, game, player):
+        player.draw_card(3)
+
+class Village(Card):
+    def effect(self, game, player):
+        player.draw_card(2)
+        player.actions += 1
+
+
 
 def main():
 
