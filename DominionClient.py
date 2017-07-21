@@ -5,10 +5,10 @@ def main():
     #host = input("Host: ")
     #port = input("Port: ")
 
-    host = "10.246.53.77"
+    host = "172.16.16.158"
     #10.147.171.24 UT
     #192.168.0.42 NETGEAR
-    #172.16.16.105 BLOCK
+    #172.16.16.158 BLOCK
     port = 5000
 
     s = socket.socket()
