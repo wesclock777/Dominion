@@ -145,7 +145,7 @@ class Game(object):
         self.current_index = random.randint(0, num_players - 1)
 
         # deal cards to players
-        starting_cards = {"Silver": 3, "Estate" : 3, "Vassal": 3, "Mine": 3, "Artisan": 3}
+        starting_cards = {"Copper": 7, "Estate" : 3}
         self.initial_hand = []
         for card, num in starting_cards.items():
             for i in range(num):
@@ -375,7 +375,7 @@ class Game(object):
             elif index >= min and index <= max:
                 return index
             else:
-                server.send_message("\nOops! You can't choose card #{}.", index)
+                server.send_message("\nOops! You can't choose card #{}.".format(index), player.index)
 
     def input_yn(self, message, player):
         while True:
@@ -448,7 +448,7 @@ class Player(object):
             server.send_message("You have lost {} buy(s).".format(-1 * change), self.index)
             server.send_other("{} has lost {} buy(s).".format(self.name, -1 * change), self.index)
         self.buys += change
-        server.send_message(">>> You now have {} buy(s).\n".format(self.buys), self.index)
+        server.send_message(">>> You now have {} buy(s).".format(self.buys), self.index)
 
     def reset(self):
         for card in self.in_play:
@@ -506,7 +506,7 @@ class Player(object):
     # adds a card to from supply to hand
     def gain_hand_card(self, carditem):
         self.hand.append(carditem)
-        server.send_message("You have gained 1 {}! It has been added to your hand.\n>>> Your hand is now: {}".format(carditem.name, self.hand) + "\n", self.index)
+        server.send_message("You have gained 1 {}! It has been added to your hand.\n>>> Your hand is now: {}".format(carditem.name, self.hand), self.index)
         server.send_other("{} has gained 1 {}! It has been added to their hand.".format(self.name, carditem.name), self.index)
         self.check_victory(carditem, True)
 
@@ -514,7 +514,7 @@ class Player(object):
     def set_view(self, times):
         if len(self.deck) < times:
             self.shuffle_cards()
-            self.deck = self.discard
+            self.deck.extend(self.discard)
             self.discard = []
         for i in range(times):
             self.viewable.insert(0, self.deck.pop(0))
@@ -547,13 +547,13 @@ class Player(object):
         cards.remove(carditem)
 
         server.send_other("{} moved 1 card to their hand.".format(self.name), self.index)
-        server.send_message("{} has been moved to your hand.\n>>> Your hand is now: {}".format(carditem.name, self.hand), self.index)
+        server.send_message("\n{} has been moved to your hand.\n>>> Your hand is now: {}".format(carditem.name, self.hand), self.index)
 
     def move_to_deck(self, cards, carditem):
         self.deck.insert(0, carditem)
         cards.remove(carditem)
         server.send_other("{} moved 1 card to the top of their deck.".format(self.name), self.index)
-        server.send_message("{} has been moved to the top of your deck.".format(carditem.name), self.index)
+        server.send_message("\n{} has been moved to the top of your deck.".format(carditem.name), self.index)
 
     def discard_card(self, cards, carditem):
         self.discard.append(carditem)
@@ -561,12 +561,32 @@ class Player(object):
         server.send_other("{} has discarded 1 card! It has been added to their discard pile.".format(self.name), self.index)
         cards.remove(carditem)
 
+    def condense_discard(self):
+        discard_dict = {}
+        for card in self.discard:
+            if card in discard_dict:
+                discard_dict[card] += 1
+            else:
+                discard_dict[card] = 1
+        discard_dict_list = []
+        for card, num in discard_dict.items():
+            discard_dict_list.append("{} x {}".format(card.name, num))
+        return discard_dict_list
+
+    def find_card(self, cards, card_name):
+        for card in cards:
+            if card.name == card_name:
+                return card
+        return None
+
     def discard_cards(self, cards, carditem_list):
+        discarded = 0
         for carditem in carditem_list:
             self.discard.append(carditem)
             server.send_message("You have discarded 1 {}! It has been added to your discard pile.".format(carditem.name), self.index)
             cards.remove(carditem)
-        server.send_other("{} has discarded {} card(s)! It has been added to their discard pile.".format(self.name, len(carditem_list)), self.index)
+            discarded += 1
+        server.send_other("{} has discarded {} card(s)! It has been added to their discard pile.".format(self.name, discarded), self.index)
 
     def trash_card(self, cards, carditem):
         if carditem.name in Player.trash:
@@ -589,12 +609,14 @@ class Player(object):
         else:
             server.send_message("\nYou cannot play {}. It is not an action card!".format(carditem.name), self.index)
 
-    def trigger_action_card(self, game, carditem, card_origin):
-        server.send_message("\nYou triggered {}!\n".format(carditem.name), self.index)
-        server.send_other("\n{} triggered {}!\n".format(self.name, carditem.name), self.index)
+    def trigger_action_card(self, game, carditem, card_origin, times):
+        server.send_message("\nYou triggered {}!".format(carditem.name), self.index)
+        server.send_other("\n{} triggered {}!".format(self.name, carditem.name), self.index)
         self.in_play.append(carditem)
         card_origin.remove(carditem)
-        carditem.effect(game, self)
+        for i in range(times):
+            server.send_message(" ", self.index)
+            carditem.effect(game, self)
 
     def calculate_money(self):
         first_silver = True
@@ -641,7 +663,11 @@ class Card(object):
         "Library": ["Action", 5, "Draw until you have 7 cards.\nSkip any Action cards and discard them after."],
         "Artisan": ["Action", 6, "Gain a card to hand costing up to $5.\nPut a card from hand onto deck."],
         "Mine": ["Action", 5, "You may trash a Treasure.\nGain a Treasure costing up to $3 more."],
-        "Vassal": ["Action", 3, "+$2\nDiscard top card of deck.\nIf it's an Action card, you may play it."]}
+        "Vassal": ["Action", 3, "+$2\nDiscard top card of deck.\nIf it's an Action card, you may play it."],
+        "Throne Room": ["Action", 4, "You may play an Action card twice."],
+        "Sentry": ["Action", 5, "+1 Card\n+1 Action\nLook at top 2 cards of deck.\nTrash/discard any number of them.\nPut rest back on top in any order."],
+        "Bandit": ["Action", 5, "Gain a Gold.\nOther players reveal top 2 cards and trashes a Treasure other than Copper.\nDiscards other cards."],
+        "Harbinger": ["Action", 3, "+1 Action\n+1 Card\nYou may top deck a card from your discard."]}
 
     def __init__(self, name):
         self.name = name
@@ -829,7 +855,7 @@ class Bureaucrat(Card):
         game.minus_supply("Silver")
         for other in self.get_other(game, player):
             prevented = self.check_react(other)
-            while not prevented:
+            if not prevented:
                 victory = [x for x in other.hand if x.type == "Victory"]
                 if len(victory) == 0:
                     server.send_message("You have no Victory cards.", other.index)
@@ -847,7 +873,7 @@ class Feast(Card):
 
 class Gardens(Card):
     def get_points(self, player):
-        self.points = player.get_total_cards() // 4
+        self.points = player.get_total_cards() // 10
         return self.points
 
 class Merchant(Card):
@@ -905,7 +931,7 @@ class Witch(Card):
         player.draw_card(2)
         for other in self.get_other(game, player):
             prevented = self.check_react(other)
-            while not prevented:
+            if not prevented:
                 if game.supply["Curse"] != 0:
                     other.gain_card(game.create_card("Curse"))
                     game.minus_supply("Curse")
@@ -946,7 +972,7 @@ class Library(Card):
         while len(player.hand) < 7:
             card = player.peek_card()
             if "Action" in card.type:
-                response = game.input_yn("Do you want to skip {}? Y/N".format(card.name), player)
+                response = game.input_yn("\nDo you want to skip {}? Y/N".format(card.name), player)
                 if response:
                     discard_pile.append(player.deck.pop(0))
                 else:
@@ -961,9 +987,9 @@ class Vassal(Card):
         player.money_effect(2)
         card = player.peek_card()
         if "Action" in card.type:
-            response = game.input_yn("Do you want to play {}? Y/N".format(card.name), player)
+            response = game.input_yn("\nDo you want to play {}? Y/N".format(card.name), player)
             if response:
-                player.trigger_action_card(game, card, player.deck)
+                player.trigger_action_card(game, card, player.deck, 1)
             else:
                 server.send_message("You choose not to play {}.".format(card.name), player.index)
                 player.discard_card(player.deck, card)
@@ -983,12 +1009,106 @@ class Mine(Card):
             else:
                 server.send_message("You choose not to Mine a card.", player.index)
                 server.send_other("{} choose not to Mine a card.".format(player.name), player.index)
+        else:
+            server.send_message("You have no Treasure card to play with Mine.", player.index)
+            server.send_other("{} has no Treasure card to play with Mine.".format(player.name), player.index)
 
 class Artisan(Card):
     def effect(self, game, player):
         self.obtain_card_hand(game, player, 5, "ANY")
         index = game.get_input_range("\nChoose a card to top deck: {}\nPress ENTER to skip effect.".format(print_list(player.hand)), player, 1, len(player.hand), False)
         player.move_to_deck(player.hand, player.hand[index - 1])
+
+class ThroneRoom(Card):
+    def effect(self, game, player):
+        if game.has_action_cards(player):
+            possible = [x for x in player.hand if x.type == "Action"]
+            index = game.get_input_range("Choose a card to trigger twice: {}\nPress ENTER if you don't want to throne room.".format(print_list(possible)), player, 1, len(possible), True)
+            if index != None:
+                card = possible[index - 1]
+                player.trigger_action_card(game, card, player.hand, 2)
+            else:
+                server.send_message("You choose not to Throne Room a card.", player.index)
+                server.send_other("{} choose not to Throne Room a card.".format(player.name), player.index)
+        else:
+            server.send_message("You have no Action card to play with Throne Room.", player.index)
+            server.send_other("{} has no Action card to play with Throne Room.".format(player.name), player.index)
+
+class Militia(Card):
+    def effect(self, game, player):
+        player.money_effect(2)
+        for other in self.get_other(game, player):
+            prevented = self.check_react(other)
+            if not prevented:
+                if len(other.hand) == 3:
+                    send_message("You only have {} cards. You don't discard anything.".format(len(other.hand)), other.index)
+                    send_other("{} only have {} cards. You don't discard anything.".format(other.name, len(other.hand)), other.index)
+                else:
+                    while len(other.hand) > 3:
+                        message = "You need to discard {} more card(s).\nChoose a card to discard: {}".format(len(other.hand) - 3, print_list(other.hand))
+                        index = game.get_input_range(message, other, 1, len(other.hand), False)
+                        other.discard_card(other.hand, other.hand[index - 1])
+
+class Harbinger(Card):
+    def effect(self, game, player):
+        player.draw_card(1)
+        player.action_effect(1)
+        if player.discard:
+            index = game.get_input_range("\nEnter the card you want to top deck or ENTER to escape:{}".format(print_list(player.condense_discard())), player, 1, len(player.discard), True)
+            if index != None:
+                card_name = player.condense_discard()[index - 1].split()[0]
+                player.move_to_deck(player.discard, player.find_card(player.discard, card_name))
+            else:
+                server.send_message("You choose not to top deck a card.", player.index)
+                server.send_other("{} choose not to top deck a card.".format(player.name), player.index)
+        else:
+            server.send_message("You have no discard pile.", player.index)
+            server.send_other("{} has no discard pile.".format(player.name), player.index)
+
+
+class Sentry(Card):
+    def effect(self, game, player):
+        player.draw_card(1)
+        player.action_effect(1)
+
+        player.set_view(2)
+        message = "You can act on these cards:{}".format(print_list(player.viewable))
+
+        while player.viewable:
+            index = game.get_input_range("\nEnter the index of the card you want to trash or ENTER to escape.\nYou can act on these cards:{}".format(print_list(player.viewable)), player, 1, len(player.viewable), True)
+            if index == None:
+                break
+            else:
+                player.trash_card(player.viewable, player.viewable[index - 1])
+
+        while player.viewable:
+            index = game.get_input_range("\nEnter the index of the card you want to discard or ENTER to escape.\nYou can act on these cards:{}".format(print_list(player.viewable)), player, 1, len(player.viewable), True)
+            if index == None:
+                break
+            else:
+                player.discard_card(player.viewable, player.viewable[index - 1])
+
+        while player.viewable:
+            index = game.get_input_range("\nEnter the index of card you want to put back first.\nYou can act on these cards:{}".format(print_list(player.viewable)), player, 1, len(player.viewable), False)
+            player.move_to_deck(player.viewable, player.viewable[index - 1])
+
+class Bandit(Card):
+    def effect(self, game, player):
+        player.gain_card(game.create_card("Gold"))
+        game.minus_supply("Gold")
+        for other in self.get_other(game, player):
+            prevented = self.check_react(other)
+            if not prevented:
+                other.set_view(2)
+                print(other.viewable)
+                possible = [card for card in other.viewable if "Treasure" in card.type and card.name != "Copper"]
+                if possible:
+                    if len(possible) > 1:
+                        index = game.get_input_range("\nEnter the index of the Treasure you want to trash: {}".format(print_list(other.viewable)), other, 1, len(possible), False)
+                        other.trash_card(other.viewable, possible[index - 1])
+                    else:
+                        other.trash_card(other.viewable, possible[0])
+            other.discard_cards(other.viewable, other.viewable)
 
 def print_list(items):
     output = "\n"
@@ -1000,33 +1120,5 @@ def main():
 
     game = Game()
     game.play_game()
-
-
-    '''
-    pygame.init()
-
-    size = width, height = 600, 400
-    speed = [5, 5]
-    black = 0, 0, 0
-
-    screen = pygame.display.set_mode(size)
-
-    ball = pygame.image.load("ball.bmp")
-    ballrect = ball.get_rect()
-
-    while 1:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT: sys.exit()
-
-        ballrect = ballrect.move(speed)
-        if ballrect.left < 0 or ballrect.right > width:
-            speed[0] = -speed[0]*(.999)
-        if ballrect.top < 0 or ballrect.bottom > height:
-            speed[1] = -speed[1]*(.999)
-
-        screen.fill(black)
-        screen.blit(ball, ballrect)
-        pygame.display.flip()
-    '''
 
 main()
