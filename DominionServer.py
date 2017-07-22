@@ -80,7 +80,7 @@ class Server():
         for client in self.clients:
             client[0].close()
 
-server = Server('127.0.0.1', 5000)
+server = Server('172.20.10.7', 5000)
 
 class Game(object):
 

@@ -5,7 +5,8 @@ def main():
     #host = input("Host: ")
     #port = input("Port: ")
 
-    host = "127.0.0.1"
+    host = "172.20.10.7"
+    #172.20.10.7 CAT IPHONE
     #10.147.171.24 UT
     #192.168.0.42 NETGEAR
     #172.16.16.158 BLOCK
