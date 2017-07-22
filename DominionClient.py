@@ -5,7 +5,7 @@ def main():
     #host = input("Host: ")
     #port = input("Port: ")
 
-    host = "172.16.16.158"
+    host = "127.0.0.1"
     #10.147.171.24 UT
     #192.168.0.42 NETGEAR
     #172.16.16.158 BLOCK
@@ -16,7 +16,7 @@ def main():
     message = ""
     data = ""
 
-    while "won the game with" not in data:
+    while "victory points in" not in data:
         data = s.recv(8192)
         data = data.decode('utf-8')
         if data.startswith("Asking: "):
