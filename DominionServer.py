@@ -87,6 +87,7 @@ class Game(object):
     def __init__(self):
         self.players = []
         self.supply = OrderedDict()
+        self.action_cards = 10
 
         print("Waiting for first player to connect...")
         server.s.listen(1)
@@ -216,6 +217,7 @@ class Game(object):
 
         for player in self.players:
             self.display_supply(player)
+            server.send_all(" ")
             random.shuffle(self.initial_hand)
             player.deal_cards(self.initial_hand)
             player.draw_card(5)
@@ -304,6 +306,8 @@ class Game(object):
         for card, num in self.supply.items():
             output = "#{}   ".format(count).ljust(4) + card.ljust(20) + " ${} ".format(Card.card_dict[card][1]).ljust(12) + str(num).ljust(2) + " left"
             server.send_message(output.center(60), player.index)
+            if count == len(self.supply) - self.action_cards:
+                server.send_message("".center(44, "*").center(60), player.index)
             count += 1
         server.send_message("", player.index)
 
