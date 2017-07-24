@@ -80,7 +80,7 @@ class Server():
         for client in self.clients:
             client[0].close()
 
-server = Server('172.20.10.7', 5000)
+server = Server('192.168.0.51', 5000)
 
 class Game(object):
 
@@ -750,6 +750,8 @@ class Curse(Card): pass
 
 class Cellar(Card):
     def effect(self, game, player):
+        player.action_effect(1)
+
         server.send_message("Your current hand is: {}".format(print_list(player.hand)), player.index)
         instring = game.get_input_generic("Enter the cards you would like to discard \nIf none just press ENTER", player).strip("\n")
         server.send_message(" ", player.index)
