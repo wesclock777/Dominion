@@ -129,15 +129,14 @@ class Game(object):
                 else:
                     supply[card] = 10
                 index = 0
-                if action_list:
-                    while index < len(action_list) and Card.card_dict[card][1] > Card.card_dict[action_list[index]][1]:
-                        index += 1
-                    action_list.insert(index, card)
-                else:
-                    action_list.append(card)
+                action_list.append(card)
+        action_list = sorted(action_list, key = lambda x : (Card.card_dict[x][1], x)) # NICE
 
         for card in supply_list:
             self.supply[card] = supply[card]
+
+        if not any("curse" in Card.card_dict[x][2].lower() for x in action_list): # ok
+            self.supply.pop("Curse")
 
         for card in action_list:
             self.supply[card] = supply[card]
@@ -934,6 +933,7 @@ class Poacher(Card):
             server.send_other("{}'s' hand is empty, they cannot discard more cards.".format(player.name), player.index)
 
 class Witch(Card):
+
     def effect(self, game, player):
         player.draw_card(2)
         for other in self.get_other(game, player):
