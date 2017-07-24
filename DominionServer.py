@@ -215,6 +215,7 @@ class Game(object):
         server.send_all("\n\n" + " STARTING GAME ".center(60, "~") + "\n")
 
         for player in self.players:
+            self.display_supply(player)
             random.shuffle(self.initial_hand)
             player.deal_cards(self.initial_hand)
             player.draw_card(5)
@@ -418,7 +419,7 @@ class Player(object):
         self.viewable, self.in_play, self.hand, self.actions, self.money, self.victory_pts), self.index)
 
     def __str__(self):
-        return "\nDiscard: {}\nHand: {}\nYou currently have: {} actions, {} buys, {} victory points".format(self.discard, self.hand, self.actions, self.buys, self.victory_pts)
+        return "\nDiscard: {}\nHand: {}\nYou currently have: {} actions, {} buys, {} victory points, {} currency".format(self.discard, self.hand, self.actions, self.buys, self.victory_pts, self.money)
 
     def money_effect(self, change):
         if change > 0:
